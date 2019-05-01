@@ -2,28 +2,41 @@
 # coding: utf-8
 
 from Bio import SeqIO
-from pyspark import SparkContext
+import pyspark
 import numpy as np
 import time
 import scipy.spatial as spt
+import gc
 
+
+def prepare_data(kmers):
+    dim = [kmers.shape[0], len(max(kmers, key=len))]
+    print(dim)
+    data = np.zeros(dim, dtype=np.int)
+    for i in range(dim[0]):
+        data[i][0:len(kmers[i])] = kmers[i][:]
+    return data
+
+# Transforma os k-mers em índices na base 10
 def k_mer(read):
-    pass
+    k = 31
+    mer = list()
+    for i in range(0, len(read)-k):
+        index = 0
+        for j, n in enumerate(read[i:i+k]):
+            if n == -1:
+                index = -1
+                continue
+            index = index + (n * pow(4, ((k-1)-j)))
+        mer.append(index)
+    mer = np.array(mer, dtype = np.int)
+    return mer
 
-def dist(v1, v2):
-    return spt.distance.cosine(v1,v2)
 
-def calculate_distance(query, db):
-    dim = [len(query), len(db)]
-    D = np.empty(dim)
-    for i in range(len(query)):
-        for j in range(len(db)):
-            D[i,j] = dist(query[i], db[j])
-    return D
-
+# Converte A, C, G e T para 0, 1, 2 e 3 respectivamente
 def convert(read):
     seq = read.seq
-    rd = np.zeros(len(seq), dtype=np.float)
+    rd = np.zeros(len(seq), dtype=np.int)
     for i in range(len(seq)):
         if seq[i] == 'A' or seq[i] == 'a':
             rd[i] = 0;
@@ -42,45 +55,39 @@ def convert(read):
             continue
     return rd
 
-def load_sequences(file_content):
-
-    reads = list();
-    for read in file_content:
-        reads.append(convert(read))
-
-    return np.array(reads)
 
 if __name__ == "__main__":
     gst = time.time()
 
-    query_file = "SRX5702553_250seqs.fasta"
-    db_file = "SRX5702553.fasta"
+    filename = "/home/fabricio/ncbi/public/sra/SRR8945190.fasta"
+    #filename = "/home/fabricio/ncbi/public/sra/SRR6515506.fasta"
 
-    #sc = SparkContext("local[4]", "genenmatch")
-    #sc.setSystemProperty('spark.executor.memory', '8g')
-    #sc.setSystemProperty('spark.driver.memory', '8g')
-    #reads = sc.parallelize(list(SeqIO.parse(filename, "fasta")))
-    #conv = reads.map(convert).collect()
-
-    pst = time.time()
-    query_content = list(SeqIO.parse(query_file, "fasta"))
-    db_content = list(SeqIO.parse(db_file, "fasta"))
-    pend = time.time()
-    print("Read time: ", pend - pst)
+    conf = pyspark.SparkConf().setAppName("MetaToolsOmic")
+    conf = (conf.setMaster('local[*]')\
+           .set('spark.executor.memory', '187G')\
+           .set('spark.driver.memory', '187G')\
+           .set('spark.driver.maxResultSize', '187G'))
+    sc = pyspark.SparkContext(conf=conf)
 
     pst = time.time()
-    db_reads = load_sequences(db_content)
-    query_reads = load_sequences(query_content)
-    del(db_content)
-    del(query_content)
+
+    content = sc.parallelize(list(SeqIO.parse(filename, "fasta")))
+
     pend = time.time()
-    print("Convertion time: ", pend - pst)
+    print("Reading time: ", pend - pst)
+   
+    kmers = np.array(content.map(convert).map(k_mer).collect())
+
+    pend = time.time()
+    print("k-mer processing time: ", pend - pst)
 
     pst = time.time()
-    D = calculate_distance(query_reads, db_reads)
-    print(D)
+
+    data = prepare_data(kmers)
+    print(data)
+
     pend = time.time()
-    print("Distance time: ", pend - pst)
+    print("Prepare data time: ", pend - pst)
 
     gend = time.time()
     print("Walltime: ", gend - gst)
