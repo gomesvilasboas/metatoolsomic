@@ -5,8 +5,19 @@ from Bio import SeqIO
 import pyspark
 import numpy as np
 import time
-import scipy.spatial as spt
+from sompy.sompy import SOMFactory
+from matplotlib import pyplot as plt
 import gc
+import pickle
+
+
+def som(data):
+    sm = SOMFactory().build(data, normalization = 'var', initialization='random')
+    sm.train(n_job=48, verbose=False, train_rough_len=2, train_finetune_len=5)
+    pickle.dump(sm, open( "sompy_model.pickle", "wb" ))
+    #topographic_error = sm.calculate_topographic_error()
+    #quantization_error = np.mean(sm._bmu[1])
+    #print ("Topographic error = %s; Quantization error = %s" % (topographic_error, quantization_error))
 
 
 def prepare_data(kmers):
@@ -19,7 +30,7 @@ def prepare_data(kmers):
 
 # Transforma os k-mers em índices na base 10
 def k_mer(read):
-    k = 31
+    k = 16
     mer = list()
     for i in range(0, len(read)-k):
         index = 0
@@ -88,6 +99,13 @@ if __name__ == "__main__":
 
     pend = time.time()
     print("Prepare data time: ", pend - pst)
+
+    pst = time.time()
+
+    som(data)
+
+    pend = time.time()
+    print("SOM time: ", pend - pst)
 
     gend = time.time()
     print("Walltime: ", gend - gst)
