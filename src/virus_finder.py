@@ -5,19 +5,29 @@ from Bio import SeqIO
 import pyspark
 import numpy as np
 import time
-from sompy.sompy import SOMFactory
+#from sompy.sompy import SOMFactory
 from matplotlib import pyplot as plt
 import gc
 import pickle
+import skfuzzy as fuzz
 
 
-def som(data):
-    sm = SOMFactory().build(data, normalization = 'var', initialization='random')
-    sm.train(n_job=48, verbose=False, train_rough_len=2, train_finetune_len=5)
-    pickle.dump(sm, open( "sompy_model.pickle", "wb" ))
-    #topographic_error = sm.calculate_topographic_error()
-    #quantization_error = np.mean(sm._bmu[1])
-    #print ("Topographic error = %s; Quantization error = %s" % (topographic_error, quantization_error))
+def fuzzy_train(tain_data):
+    fpcs = list()
+    for k in range(2,10,1):
+        print("Training: k = ", k)
+        cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(data, k, 2, error=0.005, maxiter=1000)
+        fpcs.append((k,fpc))
+
+    print(fpcs)
+
+#def som(data):
+#    sm = SOMFactory().build(data, normalization = 'var', initialization='random')
+#    sm.train(n_job=48, verbose=False, train_rough_len=2, train_finetune_len=5)
+#    pickle.dump(sm, open( "sompy_model.pickle", "wb" ))
+#    #topographic_error = sm.calculate_topographic_error()
+#    #quantization_error = np.mean(sm._bmu[1])
+#    #print ("Topographic error = %s; Quantization error = %s" % (topographic_error, quantization_error))
 
 
 def prepare_data(kmers):
@@ -70,14 +80,13 @@ def convert(read):
 if __name__ == "__main__":
     gst = time.time()
 
-    filename = "/home/fabricio/ncbi/public/sra/SRR8945190.fasta"
-    #filename = "/home/fabricio/ncbi/public/sra/SRR6515506.fasta"
+    filename = "/home/fabricio/Documents/projects/mackenzie/data_mining/SRX5784792.fasta"
 
     conf = pyspark.SparkConf().setAppName("MetaToolsOmic")
     conf = (conf.setMaster('local[*]')\
-           .set('spark.executor.memory', '187G')\
-           .set('spark.driver.memory', '187G')\
-           .set('spark.driver.maxResultSize', '187G'))
+           .set('spark.executor.memory', '4G')\
+           .set('spark.driver.memory', '4G')\
+           .set('spark.driver.maxResultSize', '4G'))
     sc = pyspark.SparkContext(conf=conf)
 
     pst = time.time()
@@ -86,7 +95,7 @@ if __name__ == "__main__":
 
     pend = time.time()
     print("Reading time: ", pend - pst)
-   
+
     kmers = np.array(content.map(convert).map(k_mer).collect())
 
     pend = time.time()
@@ -95,17 +104,24 @@ if __name__ == "__main__":
     pst = time.time()
 
     data = prepare_data(kmers)
-    print(data)
+#    print(data)
 
     pend = time.time()
     print("Prepare data time: ", pend - pst)
 
+#    pst = time.time()
+#
+#    som(data)
+#
+#    pend = time.time()
+#    print("SOM time: ", pend - pst)
+
     pst = time.time()
 
-    som(data)
+    fuzzy_train(data)
 
     pend = time.time()
-    print("SOM time: ", pend - pst)
+    print("Fuzzy time: ", pend - pst)
 
     gend = time.time()
     print("Walltime: ", gend - gst)
