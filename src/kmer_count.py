@@ -4,18 +4,11 @@
 from Bio import SeqIO
 import pyspark
 import numpy as np
-import time
-#from sompy.sompy import SOMFactory
-from matplotlib import pyplot as plt
-import gc
-import pickle
-import skfuzzy as fuzz
-from scipy.sparse import csr_matrix
 
 
 def k_mer_freq_count(read, k):
     uniqueValues, occurCount = np.unique(read, return_counts=True)
-    count = np.zeros(pow(4,k))
+    count = np.zeros(pow(4,k), dtype=np.int)
     for i in range(len(uniqueValues)):
         count[uniqueValues[i]] = occurCount[i]
     return count
@@ -61,13 +54,13 @@ def convert(read):
 def kmer_count(filename, k, context):
     conf = pyspark.SparkConf().setAppName(context)
     conf = (conf.setMaster('local[*]')\
-           .set('spark.executor.memory', '8G')\
-           .set('spark.driver.memory', '8G')\
-           .set('spark.driver.maxResultSize', '8G'))
+           .set('spark.executor.memory', '250G')\
+           .set('spark.driver.memory', '250G')\
+           .set('spark.driver.maxResultSize', '250G'))
     sc = pyspark.SparkContext(conf=conf)
 
     content = sc.parallelize(list(SeqIO.parse(filename, "fasta")))
 
-    kmers = np.array(content.map(convert).map(lambda read: k_mer(read, k)).map(lambda read: k_mer_freq_count(read, k)).collect())
+    kmers = np.array(content.map(convert).map(lambda read: k_mer(read, k)).map(lambda read: k_mer_freq_count(read, k)).collect(), dtype=np.int)
     sc.stop()
     return kmers
