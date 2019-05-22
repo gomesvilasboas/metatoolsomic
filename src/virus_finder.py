@@ -1,13 +1,12 @@
 
 # coding: utf-8
 
-from Bio import SeqIO
 import pyspark
 import numpy as np
 import time
-from sompy.sompy import SOMFactory
-from sompy.visualization.mapview import View2DPacked
-from sompy.visualization.umatrix import UMatrixView
+#from sompy.sompy import SOMFactory
+#from sompy.visualization.mapview import View2DPacked
+#from sompy.visualization.umatrix import UMatrixView
 from matplotlib import pyplot as plt
 import gc
 import pickle
@@ -64,14 +63,14 @@ def save_statistics(algo, k, ng, sscore, c_time, p_time):
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writerow(run)
     except IOError:
-        print("I/O error") 
+        print("I/O error")
 
 
 
 if __name__ == "__main__":
     gst = time.time()
 
-    query = "/home/fabricio/ncbi/public/sra/SRR7547275.fasta"
+    query = "/tmp/mackenzie/sequences/SRX5784792.fasta"
     k = 5
 #    db = "/home/fabricio/Documents/projects/mackenzie/sequences/AF033819.3.fasta"
 #    for k in range(2, 8):
@@ -81,18 +80,19 @@ if __name__ == "__main__":
 #    kmer_db_freq = kmer_count(db, k, "K-merDB")
     pend = time.time()
     p_time = pend - pst
+
     ng = 5
 #    for ng in range(2, 10):
-    pst = time.time()
-    model, sscore, label = som(kmer_query_freq, ng)
-    c_time = time.time() - pst
-    save_statistics('som', k, ng, sscore, c_time, p_time)
- 
+#    pst = time.time()
+#    model, sscore, label = som(kmer_query_freq, ng)
+#    c_time = time.time() - pst
+#    save_statistics('som', k, ng, sscore, c_time, p_time)
+
     pst = time.time()
     model, sscore, label =  kmeans(kmer_query_freq, ng)
     c_time = time.time() - pst
     save_statistics('kmeans', k, ng, sscore, c_time, p_time)
-    
+
 #    pst = time.time()
 #    model, sscore = fuzzy(kmer_query_freq, ng)
 #    c_time = time.time() - pst
