@@ -8,7 +8,7 @@ from scipy.sparse import csr_matrix, vstack
 def k_mer_freq_count(read, k):
     uniqueValues, occurCount = np.unique(read, return_counts=True)
     idx = np.zeros_like(uniqueValues)
-    return csr_matrix((occurCount, (idx, uniqueValues)), shape=(1, 4**k), dtype=np.float64)
+    return csr_matrix((occurCount, (idx, uniqueValues)), shape=(1, 4**k), dtype=np.int)
 
 # Transforma os k-mers em índices na base 10
 def k_mer(read, k):
@@ -20,30 +20,31 @@ def k_mer(read, k):
                 index = -1
                 continue
             index = index + (n * pow(4, ((k-1)-j)))
-        mer.append(index)
-    mer = np.array(mer, dtype=np.float64)
+        if index != -1:
+            mer.append(index)
+    mer = np.array(mer, dtype=np.int)
     return mer
 
 
 # Converte A, C, G e T para 0, 1, 2 e 3 respectivamente
 def convert(read):
     seq = read['seq']
-    rd = np.zeros(len(seq), dtype=np.float64)
+    rd = np.zeros(len(seq), dtype=np.int)
     for i in range(len(seq)):
         if seq[i] == 'A' or seq[i] == 'a':
-            rd[i] = 0.;
+            rd[i] = 0;
             continue
         if seq[i] == 'C' or seq[i] == 'c':
-            rd[i] = 1.;
+            rd[i] = 1;
             continue
         if seq[i] == 'G' or seq[i] == 'g':
-            rd[i] = 2.;
+            rd[i] = 2;
             continue
         if seq[i] == 'T' or seq[i] == 't':
-            rd[i] = 3.;
+            rd[i] = 3;
             continue
         if seq[i] == 'N' or seq[i] == 'n':
-            rd[i] = -1.;
+            rd[i] = -1;
             continue
     return rd
 
@@ -82,6 +83,6 @@ def kmer_count(filename, k, context):
     kmers = kmers_list[0]
     for i in range(1,len(kmers_list)):
         print(type(kmers))
-        kmers = vstack(kmers, kmers_list[i], dtype=np.float64)
+        kmers = vstack(kmers, kmers_list[i], dtype=np.int)
     print(kmers.shape)
     return kmers
