@@ -7,8 +7,7 @@ from scipy.sparse import csr_matrix, vstack
 
 def k_mer_freq_count(read, k):
     uniqueValues, occurCount = np.unique(read, return_counts=True)
-    idx = np.zeros_like(uniqueValues)
-    return csr_matrix((occurCount, (idx, uniqueValues)), shape=(1, 4**k), dtype=np.int)
+    return uniqueValues, occurCount
 
 # Transforma os k-mers em índices na base 10
 def k_mer(read, k):
@@ -31,6 +30,9 @@ def convert(read):
     seq = read['seq']
     rd = np.zeros(len(seq), dtype=np.int)
     for i in range(len(seq)):
+        if seq[i] == "\n":
+            print("Erro!")
+            continue
         if seq[i] == 'A' or seq[i] == 'a':
             rd[i] = 0;
             continue
@@ -46,6 +48,7 @@ def convert(read):
         if seq[i] == 'N' or seq[i] == 'n':
             rd[i] = -1;
             continue
+        rd[i] = -2
     return rd
 
 
@@ -79,10 +82,10 @@ def kmer_count(filename, k, context):
     content = sc.parallelize(parse_fasta(filename))
 
     kmers_list = content.map(convert).map(lambda read: k_mer(read, k)).map(lambda read: k_mer_freq_count(read, k)).collect()
-    sc.stop()
-    kmers = kmers_list[0]
-    for i in range(1,len(kmers_list)):
-        print(type(kmers))
-        kmers = vstack(kmers, kmers_list[i], dtype=np.int)
-    print(kmers.shape)
+#    sc.stop()
+#    idx = list()
+#    for i in range(1,len(kmers_list)):
+#        idx.append(np.full((1,len(kmers_list[i][0])), i))
+    print(kmers_list[0])#, occurCount)
+    #kmers = csr_matrix((kmers_list[:][1], (idx, kmers_list[:][0])), dtype=np.int)
     return kmers

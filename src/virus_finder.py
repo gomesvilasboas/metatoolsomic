@@ -70,7 +70,7 @@ def save_statistics(algo, k, ng, sscore, c_time, p_time):
 if __name__ == "__main__":
     gst = time.time()
 
-    query = "/home/fabricio/ncbi/public/sra/SRR8945190.fasta"
+    query = "/tmp/mackenzie/sequences/SRX5784792.fasta"
     k = 5
 #    db = "/home/fabricio/Documents/projects/mackenzie/sequences/AF033819.3.fasta"
 #    for k in range(2, 8):
