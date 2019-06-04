@@ -20,9 +20,9 @@ import csv
 
 def kmeans(data, k):
     print("K-means")
-    kmeans_res = KMeans(n_clusters=k, random_state=0).fit(data)
-    sscore = davies_bouldin_score(data, kmeans_res.labels_)
-    return kmeans_res, sscore
+    kmeans_res = KMeans(n_clusters=k, random_state=0, n_jobs=-1).fit(data)
+    #sscore = davies_bouldin_score(data, kmeans_res.labels_)
+    return kmeans_res#, sscore
 
 
 def fuzzy(data, ng):
@@ -38,14 +38,14 @@ def fuzzy(data, ng):
 def som(data, ng):
     mapsize = [20,20]
     sm = SOMFactory().build(data, mapsize, normalization = 'var', initialization='random')
-    sm.train(n_job=12, verbose=False, train_rough_len=2, train_finetune_len=5)
+    sm.train(n_job=96, verbose=False, train_rough_len=2, train_finetune_len=5)
     filename = 'SRR7547275_SOM_' + str(k) + ".dump"
     pickle_out =  open(filename, 'wb')
     pickle.dump(som, pickle_out, pickle.HIGHEST_PROTOCOL)
     pickle_out.close()
     map_labels = sm.cluster(n_clusters=ng)
     data_labels = np.array([map_labels[int(k)] for k in sm._bmu[0]])
-    sscore = davies_bouldin_score(data, data_labels)
+#    sscore = davies_bouldin_score(data, data_labels)
 #    print(data_labels.shape)
 #    u = UMatrixView(50, 50, 'umatrix', show_axis=True, text_size=8, show_text=True)
 #    UMAT  = u.build_u_matrix(sm, distance=1, row_normalized=False)
@@ -53,7 +53,7 @@ def som(data, ng):
 #    v = View2DPacked(2, 2, 'k-means',text_size=8)
 #    cl = sm.cluster(n_clusters=3)
 #    v.show(som, what='cluster')
-    return sm, sscore
+    return sm#, sscore
 
 def save_statistics(algo, k, ng, sscore, c_time, p_time):
     run = {'algo': algo, 'k': k, 'ng': ng, 'sscore': sscore, 'c_time': c_time, 'p_time': p_time}
@@ -70,8 +70,8 @@ def save_statistics(algo, k, ng, sscore, c_time, p_time):
 if __name__ == "__main__":
     gst = time.time()
 
-    query = "/tmp/mackenzie/sequences/SRX5784792.fasta"
-    k = 5
+    query = "/home/fabricio/ncbi/public/sra/SRR7547275.fasta"
+    k = 17
 #    db = "/home/fabricio/Documents/projects/mackenzie/sequences/AF033819.3.fasta"
 #    for k in range(2, 8):
 #        print("k = ", k)
@@ -83,15 +83,17 @@ if __name__ == "__main__":
 
     ng = 5
 #    for ng in range(2, 10):
-#    pst = time.time()
+    pst = time.time()
 #    model, sscore, label = som(kmer_query_freq, ng)
-#    c_time = time.time() - pst
+    model = som(kmer_query_freq, ng)
+    c_time = time.time() - pst
 #    save_statistics('som', k, ng, sscore, c_time, p_time)
 
     pst = time.time()
-    model, sscore, label =  kmeans(kmer_query_freq, ng)
+#    model, sscore, label =  kmeans(kmer_query_freq, ng)
+    model =  kmeans(kmer_query_freq, ng)
     c_time = time.time() - pst
-    save_statistics('kmeans', k, ng, sscore, c_time, p_time)
+#    save_statistics('kmeans', k, ng, sscore, c_time, p_time)
 
 #    pst = time.time()
 #    model, sscore = fuzzy(kmer_query_freq, ng)

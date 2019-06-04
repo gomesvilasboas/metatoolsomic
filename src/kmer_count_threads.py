@@ -1,9 +1,11 @@
 
 # coding: utf-8
 
-import pyspark
 import numpy as np
+from math import floor
+from multiprocessing import Process, Manager
 from scipy.sparse import lil_matrix
+
 
 def k_mer_freq_count(read, k):
     uniqueValues, occurCount = np.unique(read, return_counts=True)
@@ -28,7 +30,7 @@ def k_mer(read, k):
 # Converte A, C, G e T para 0, 1, 2 e 3 respectivamente
 def convert(read):
     seq = read['seq']
-    rd = np.zeros(len(seq))
+    rd = np.zeros(len(seq), dtype=np.int)
     for i in range(len(seq)):
         if seq[i] == "\n":
             print("Erro!")
@@ -71,22 +73,47 @@ def parse_fasta(filename):
     return reads
 
 
+def run_rest(reads, k, kmers_list, stt):
+    for i in range(len(reads)):
+        idx = stt + i
+        kmers_list[idx] = k_mer_freq_count(k_mer((convert(reads[i])), k), k)
+        
+def run(reads, k, tid, offset, kmers_list):
+    for i in range(len(reads)):
+        idx = (tid * offset) + i
+        kmers_list[idx] = k_mer_freq_count(k_mer((convert(reads[i])), k), k)
+   
+
 def kmer_count(filename, k, context):
-    conf = pyspark.SparkConf().setAppName(context)
-    conf = (conf.setMaster('local[48]')\
-           .set('spark.executor.memory', '250G')\
-           .set('spark.driver.memory', '250G')\
-           .set('spark.driver.maxResultSize', '250G'))
-    sc = pyspark.SparkContext(conf=conf)
+    nt = 24
+    manager = Manager()
 
-    content = sc.parallelize(parse_fasta(filename))
+    print('Reading file')
+    reads = parse_fasta(filename)
 
-    kmers_list = content.map(convert).map(lambda read: k_mer(read, k)).map(lambda read: k_mer_freq_count(read, k)).collect()
-    sc.stop()
+    print('K-mer processing')
+    offset = floor(len(reads)/nt)
+    rest = len(reads) - (offset * nt)
+    kmers_list = manager.list([None] * len(reads))
+    p = [None] * nt
+    for i in range(nt):
+        stt = i * offset
+        stp = stt + offset
+        p[i] = Process(target=run, args=(reads[stt:stp], k, i, offset, kmers_list, ))
+        p[i].start()
 
-    kmers = lil_matrix((len(kmers_list), 4**k))
+    stt = offset * nt
+    run_rest(reads[stt:], k, kmers_list, stt)
+
+#    kmers_list = list(kmers_list)
+
+    print('Sparse matrix composition')
+    kmers = lil_matrix((len(kmers_list), 4**k), dtype=np.int)
     for i in range(0,len(kmers_list)):
         kmers[i, kmers_list[i][0]] = kmers_list[i][1]
-#    print(kmers)
+#        print(kmers_list[i][0], kmers_list[i][1])
+
+    for i in range(nt):
+        p[i].join()
 
     return kmers
